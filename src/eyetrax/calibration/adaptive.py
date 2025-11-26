@@ -35,7 +35,8 @@ class BlueNoiseSampler:
 
 
 def _draw_live_pred(canvas, frame, gaze_estimator):
-    ft, blink = gaze_estimator.extract_features(frame)
+    result = gaze_estimator.extract_features(frame)
+    ft, blink = result["features"], result["blink"]
     if ft is None or blink:
         return None
     x_pred, y_pred = gaze_estimator.predict(np.array([ft]))[0]

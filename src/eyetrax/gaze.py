@@ -116,11 +116,11 @@ class GazeEstimator:
             thr = 0.2
         blink_detected = EAR < thr
 
-
+        long_blink = False
         # long blink detection
         if blink_detected:
-            if _blink_start_time is None:
-                _blink_start_time = ts # record the start time of the blink
+            if self._blink_start_time is None:
+                self._blink_start_time = ts # record the start time of the blink
         else:
             if self._blink_start_time:
                 duration = (ts - self._blink_start_time) * 1000  # duration in milliseconds
