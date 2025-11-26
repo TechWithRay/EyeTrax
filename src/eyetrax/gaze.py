@@ -33,6 +33,7 @@ class GazeEstimator:
         self._blink_ratio = blink_threshold_ratio
         self._min_history = min_history
         self._blink_timestamps = deque(maxlen=256)
+        self._long_blink_timestamps = deque(maxlen=156)
         self._blink_start_time = None
 
     def extract_features(self, image):
@@ -120,12 +121,15 @@ class GazeEstimator:
         # long blink detection
         if blink_detected:
             if self._blink_start_time is None:
-                self._blink_start_time = ts # record the start time of the blink
+                self._blink_start_time = ts  # record the start time of the blink
         else:
             if self._blink_start_time:
-                duration = (ts - self._blink_start_time) * 1000  # duration in milliseconds
+                duration = (
+                    ts - self._blink_start_time
+                ) * 1000  # duration in milliseconds
                 if duration >= 500:  # threshold for long blink threashold 500ms
                     long_blink = True
+                    self._long_blink_timestamps.append(ts)
                 self._blink_start_time = None
                 if duration >= 50:  # count any blink > 50ms
                     self._blink_timestamps.append(ts)
@@ -140,7 +144,11 @@ class GazeEstimator:
         perclos = len(closed_frames) / max(1, len(self._ear_history))
 
         # fatigue index 0–100 (simple weighted)
-        fatigue_index = perclos*60 + (long_blink*10) + (blink_rate/30*30)
+        fatigue_index = (
+            perclos * 60
+            + min(len(self._long_blink_timestamps) * 5, 20)
+            + min(blink_rate * 0.2, 20)
+        )
         fatigue_index = min(100, fatigue_index)
 
         result = {
@@ -152,7 +160,7 @@ class GazeEstimator:
             "PERCLOS": perclos,
             "fatigue_index": fatigue_index,
             "head_pose": head_pose,
-            "gaze_vector": None
+            "gaze_vector": None,
         }
 
         return result
