@@ -76,7 +76,8 @@ class KalmanSmoother(BaseSmoother):
             if not ret:
                 continue
 
-            features, blink_detected = gaze_estimator.extract_features(frame)
+            result = gaze_estimator.extract_features(frame)
+            features, blink_detected = result["features"], result["blink"]
             canvas = np.zeros((screen_height, screen_width, 3), dtype=np.uint8)
 
             for point in points:

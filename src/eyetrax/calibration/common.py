@@ -35,7 +35,8 @@ def wait_for_face_and_countdown(cap, gaze_estimator, sw, sh, dur: int = 2) -> bo
         ret, frame = cap.read()
         if not ret:
             continue
-        f, blink = gaze_estimator.extract_features(frame)
+        result = gaze_estimator.extract_features(frame)
+        f, blink = result["features"], result["blink"]
         face = f is not None and not blink
         canvas = np.zeros((sh, sw, 3), dtype=np.uint8)
         now = time.time()
@@ -126,7 +127,8 @@ def _pulse_and_capture(
             cv2.imshow("Calibration", canvas)
             if cv2.waitKey(1) == 27:
                 return None
-            ft, blink = gaze_estimator.extract_features(frame)
+            result = gaze_estimator.extract_features(frame)
+            ft, blink = result["features"], result["blink"]
             if ft is not None and not blink:
                 feats.append(ft)
                 targs.append([x, y])

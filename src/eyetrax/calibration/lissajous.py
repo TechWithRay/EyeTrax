@@ -49,7 +49,8 @@ def run_lissajous_calibration(gaze_estimator, camera_index: int = 0):
         cv2.imshow("Calibration", c)
         if cv2.waitKey(1) == 27:
             break
-        ft, blink = gaze_estimator.extract_features(f)
+        result = gaze_estimator.extract_features(f)
+        ft, blink = result["features"], result["blink"]
         if ft is not None and not blink:
             feats.append(ft)
             targs.append([x, y])

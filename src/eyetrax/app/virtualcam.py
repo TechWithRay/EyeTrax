@@ -64,7 +64,8 @@ def run_virtualcam():
         ) as cam:
             print(f"Virtual camera started: {cam.device}")
             for frame in iter_frames(cap):
-                features, blink_detected = gaze_estimator.extract_features(frame)
+                result = gaze_estimator.extract_features(frame)
+                features, blink_detected = result["features"], result["blink"]
 
                 if features is not None and not blink_detected:
                     gaze_point = gaze_estimator.predict(np.array([features]))[0]

@@ -92,7 +92,10 @@ cap = cv2.VideoCapture(0)
 while True:
     # Extract features from frame
     ret, frame = cap.read()
-    features, blink = estimator.extract_features(frame)
+    result = estimator.extract_features(frame)
+
+    # Unpack features and blink status
+    features, blink = result['features'], result['blink']
 
     # Predict screen coordinates
     if features is not None and not blink:

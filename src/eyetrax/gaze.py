@@ -6,6 +6,7 @@ from pathlib import Path
 import cv2
 import mediapipe as mp
 import numpy as np
+import time
 
 from eyetrax.constants import LEFT_EYE_INDICES, MUTUAL_INDICES, RIGHT_EYE_INDICES
 from eyetrax.models import BaseModel, create_model
@@ -31,6 +32,8 @@ class GazeEstimator:
         self._ear_history = deque(maxlen=ear_history_len)
         self._blink_ratio = blink_threshold_ratio
         self._min_history = min_history
+        self._blink_timestamps = deque(maxlen=256)
+        self._blink_start_time = None
 
     def extract_features(self, image):
         """
@@ -39,6 +42,7 @@ class GazeEstimator:
         """
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(image_rgb)
+        ts = time.time()
 
         if not results.multi_face_landmarks:
             return None, False
@@ -81,7 +85,10 @@ class GazeEstimator:
         roll = np.arctan2(R[2, 1], R[2, 2])
         features = np.concatenate([features, [yaw, pitch, roll]])
 
-        # Blink detection
+        # Add head pose angles to features
+        head_pose = {"yaw": yaw, "pitch": pitch, "roll": roll}
+
+        # EAR & Blink detection
         left_eye_inner = np.array([landmarks[133].x, landmarks[133].y])
         left_eye_outer = np.array([landmarks[33].x, landmarks[33].y])
         left_eye_top = np.array([landmarks[159].x, landmarks[159].y])
@@ -109,7 +116,46 @@ class GazeEstimator:
             thr = 0.2
         blink_detected = EAR < thr
 
-        return features, blink_detected
+        long_blink = False
+        # long blink detection
+        if blink_detected:
+            if self._blink_start_time is None:
+                self._blink_start_time = ts # record the start time of the blink
+        else:
+            if self._blink_start_time:
+                duration = (ts - self._blink_start_time) * 1000  # duration in milliseconds
+                if duration >= 500:  # threshold for long blink threashold 500ms
+                    long_blink = True
+                self._blink_start_time = None
+                if duration >= 50:  # count any blink > 50ms
+                    self._blink_timestamps.append(ts)
+
+        now = ts
+        # PERCLOS calculation
+        perclos_window = 60.0  # seconds
+        recent_blinks = [t for t in self._blink_timestamps if now - t <= perclos_window]
+        blink_rate = len(recent_blinks)
+
+        closed_frames = [e for e in self._ear_history if e < thr]
+        perclos = len(closed_frames) / max(1, len(self._ear_history))
+
+        # fatigue index 0–100 (simple weighted)
+        fatigue_index = perclos*60 + (long_blink*10) + (blink_rate/30*30)
+        fatigue_index = min(100, fatigue_index)
+
+        result = {
+            "features": features,
+            "EAR": EAR,
+            "blink": blink_detected,
+            "long_blink": long_blink,
+            "blink_rate": blink_rate,
+            "PERCLOS": perclos,
+            "fatigue_index": fatigue_index,
+            "head_pose": head_pose,
+            "gaze_vector": None
+        }
+
+        return result
 
     def save_model(self, path: str | Path):
         """
