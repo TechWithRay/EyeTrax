@@ -124,10 +124,10 @@ class GazeEstimator:
         else:
             if self._blink_start_time:
                 duration = (ts - self._blink_start_time) * 1000  # duration in milliseconds
-                if duration >= 0.5:  # threshold for long blink
+                if duration >= 500:  # threshold for long blink threashold 500ms
                     long_blink = True
                 self._blink_start_time = None
-                if duration >= 50:  # count any blink >50ms
+                if duration >= 50:  # count any blink > 50ms
                     self._blink_timestamps.append(ts)
 
         now = ts
