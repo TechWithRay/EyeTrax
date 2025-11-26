@@ -138,16 +138,20 @@ class GazeEstimator:
         # PERCLOS calculation
         perclos_window = 60.0  # seconds
         recent_blinks = [t for t in self._blink_timestamps if now - t <= perclos_window]
+        recent_long_blinks = [
+            t for t in self._long_blink_timestamps if now - t <= perclos_window
+        ]
+
+        # calculate the blink rate and long blink rate
         blink_rate = len(recent_blinks)
+        long_blink_rate = len(recent_long_blinks)
 
         closed_frames = [e for e in self._ear_history if e < thr]
         perclos = len(closed_frames) / max(1, len(self._ear_history))
 
         # fatigue index 0–100 (simple weighted)
         fatigue_index = (
-            perclos * 60
-            + min(len(self._long_blink_timestamps) * 5, 20)
-            + min(blink_rate * 0.2, 20)
+            perclos * 60 + min(long_blink_rate * 5, 20) + min(blink_rate * 0.2, 20)
         )
         fatigue_index = min(100, fatigue_index)
 
